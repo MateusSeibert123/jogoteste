@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Strike - Realistic Shooter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden;
+            background-color: #111;
+            color: white;
+            touch-action: manipulation;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                        url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .zombie {
+            position: absolute;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transition: transform 0.1s;
+            z-index: 10;
+        }
+        
+        .blood-splat {
+            position: absolute;
+            background-size: contain;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        #weapon {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 150px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center bottom;
+            z-index: 50;
+            transition: transform 0.05s;
+        }
+        
+        .muzzle-flash {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 45;
+        }
+        
+        .shell-casing {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            z-index: 40;
+        }
+        
+        #blood-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 0, 0, 0);
+            pointer-events: none;
+            z-index: 30;
+            transition: background-color 0.3s;
+        }
+        
+        #ammo-display {
+            position: absolute;
+            bottom: 100px;
+            right: 30px;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 60;
+        }
+        
+        #health-display {
+            position: absolute;
+            bottom: 100px;
+            left: 30px;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 60;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 60;
+        }
+        
+        #wave-display {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 60;
+        }
+        
+        #reload-indicator {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 60;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+        
+        .hitmarker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12 2L4 12l8 10 8-10z"/></svg>');
+            background-size: contain;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 35;
+            transition: opacity 0.2s;
+        }
+        
+        .headshot {
+            position: absolute;
+            width: 100px;
+            height: 50px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><text x="50" y="30" font-family="Arial" font-size="20" fill="red" text-anchor="middle">HEADSHOT</text></svg>');
+            background-size: contain;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 35;
+            transition: opacity 0.5s;
+        }
+        
+        #blood-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M20,20 Q30,10 40,20 T60,20 T80,20" stroke="rgba(150,0,0,0.3)" fill="none" stroke-width="2"/><path d="M10,30 Q20,20 30,30 T50,30 T70,30 T90,30" stroke="rgba(150,0,0,0.3)" fill="none" stroke-width="2"/><path d="M5,50 Q15,40 25,50 T45,50 T65,50 T85,50 T95,50" stroke="rgba(150,0,0,0.3)" fill="none" stroke-width="2"/><path d="M0,70 Q10,60 20,70 T40,70 T60,70 T80,70 T100,70" stroke="rgba(150,0,0,0.3)" fill="none" stroke-width="2"/><path d="M15,90 Q25,80 35,90 T55,90 T75,90 T95,90" stroke="rgba(150,0,0,0.3)" fill="none" stroke-width="2"/></svg>');
+            opacity: 0;
+            pointer-events: none;
+            z-index: 25;
+            transition: opacity 0.3s;
+        }
+        
+        .blood-drip {
+            position: absolute;
+            width: 5px;
+            height: 30px;
+            background: linear-gradient(to bottom, rgba(150,0,0,0.8), rgba(150,0,0,0));
+            border-radius: 5px;
+            pointer-events: none;
+            z-index: 26;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="crosshair">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <line x1="10" y1="0" x2="10" y2="6" stroke="white" stroke-width="2"/>
+                <line x1="10" y1="14" x2="10" y2="20" stroke="white" stroke-width="2"/>
+                <line x1="0" y1="10" x2="6" y2="10" stroke="white" stroke-width="2"/>
+                <line x1="14" y1="10" x2="20" y2="10" stroke="white" stroke-width="2"/>
+                <circle cx="10" cy="10" r="3" stroke="white" stroke-width="1" fill="none"/>
+            </svg>
+        </div>
+        
+        <div id="weapon"></div>
+        <div id="muzzle-flash" class="muzzle-flash"></div>
+        
+        <div id="blood-overlay"></div>
+        <div id="blood-screen"></div>
+        
+        <div id="ammo-display">30 / 90</div>
+        <div id="health-display">100 HP</div>
+        <div id="score-display">Score: 0</div>
+        <div id="wave-display">Wave: 1</div>
+        <div id="reload-indicator">Reloading...</div>
+        
+        <div id="game-over">
+            <h1 class="text-5xl font-bold text-red-500 mb-4">GAME OVER</h1>
+            <p class="text-2xl mb-8">Your score: <span id="final-score">0</span></p>
+            <button id="restart-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-xl transition duration-300">
+                Play Again
+            </button>
+        </div>
+        
+        <div id="start-screen">
+            <h1 class="text-6xl font-bold text-red-500 mb-6">ZOMBIE STRIKE</h1>
+            <p class="text-xl mb-10 text-gray-300">Survive as long as you can against the zombie horde!</p>
+            <button id="start-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-lg text-2xl transition duration-300">
+                START GAME
+            </button>
+            <div class="mt-8 text-gray-400">
+                <p class="mb-2">Controls:</p>
+                <p>Left Click - Shoot</p>
+                <p>R - Reload</p>
+                <p>Mouse - Aim</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        const gameState = {
+            isRunning: false,
+            score: 0,
+            wave: 1,
+            health: 100,
+            ammo: 30,
+            maxAmmo: 30,
+            totalAmmo: 90,
+            isReloading: false,
+            zombies: [],
+            zombieSpeed: 2,
+            zombieSpawnRate: 1500,
+            zombieHealth: 100,
+            lastSpawnTime: 0,
+            lastDamageTime: 0,
+            damageCooldown: 1000,
+            gameTime: 0,
+            headshotMultiplier: 2,
+            weaponRecoil: 0,
+            recoilRecovery: 0.1,
+            bloodDrips: []
+        };
+
+        // DOM elements
+        const gameContainer = document.getElementById('game-container');
+        const weapon = document.getElementById('weapon');
+        const muzzleFlash = document.getElementById('muzzle-flash');
+        const bloodOverlay = document.getElementById('blood-overlay');
+        const bloodScreen = document.getElementById('blood-screen');
+        const ammoDisplay = document.getElementById('ammo-display');
+        const healthDisplay = document.getElementById('health-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const waveDisplay = document.getElementById('wave-display');
+        const reloadIndicator = document.getElementById('reload-indicator');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+
+        // Weapon images
+        const weaponImages = [
+            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150"><rect x="50" y="50" width="200" height="30" fill="%23222"/><rect x="250" y="40" width="30" height="50" fill="%23333"/><rect x="50" y="30" width="20" height="70" fill="%23333"/><rect x="70" y="40" width="10" height="50" fill="%23555"/><circle cx="280" cy="65" r="15" fill="%23333"/></svg>',
+            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150"><rect x="50" y="50" width="200" height="30" fill="%23222"/><rect x="250" y="40" width="30" height="50" fill="%23333"/><rect x="50" y="30" width="20" height="70" fill="%23333"/><rect x="70" y="40" width="10" height="50" fill="%23555"/><circle cx="280" cy="65" r="15" fill="%23333"/><rect x="150" y="30" width="20" height="20" fill="%23d33"/></svg>'
+        ];
+
+        // Zombie images
+        const zombieImages = [
+            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150"><circle cx="50" cy="40" r="30" fill="%234d7e3e"/><rect x="30" y="70" width="40" height="60" fill="%234d7e3e"/><rect x="20" y="80" width="15" height="40" fill="%23365a2d"/><rect x="65" y="80" width="15" height="40" fill="%23365a2d"/><rect x="35" y="130" width="10" height="20" fill="%23365a2d"/><rect x="55" y="130" width="10" height="20" fill="%23365a2d"/><circle cx="40" cy="35" r="5" fill="%23000"/><circle cx="60" cy="35" r="5" fill="%23000"/><path d="M40,50 Q50,60 60,50" stroke="%23000" fill="none" stroke-width="2"/></svg>',
+            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150"><circle cx="50" cy="40" r="30" fill="%235e8c3a"/><rect x="30" y="70" width="40" height="60" fill="%235e8c3a"/><rect x="20" y="80" width="15" height="40" fill="%23416b2d"/><rect x="65" y="80" width="15" height="40" fill="%23416b2d"/><rect x="35" y="130" width="10" height="20" fill="%23416b2d"/><rect x="55" y="130" width="10" height="20" fill="%23416b2d"/><circle cx="40" cy="35" r="5" fill="%23000"/><circle cx="60" cy="35" r="5" fill="%23000"/><path d="M40,50 Q50,55 60,50" stroke="%23000" fill="none" stroke-width="2"/><path d="M30,30 L20,20" stroke="%23000" stroke-width="3"/></svg>'
+        ];
+
+        // Blood splat images
+        const bloodSplatImages = [
+            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,20 Q60,10 70,20 Q80,30 70,40 Q60,50 50,60 Q40,50 30,40 Q20,30 30,20 Q40,10 50,20 Z" fill="%23d00"/></svg>',
+            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,30 Q60,20 70,30 Q80,40 70,50 Q60,60 50,70 Q40,60 30,50 Q20,40 30,30 Q40,20 50,30 Z" fill="%23d00"/><path d="M40,20 Q50,15 60,20 Q65,30 60,40 Q50,45 40,40 Q35,30 40,20 Z" fill="%23d00"/></svg>'
+        ];
+
+        // Muzzle flash images
+        const muzzleFlashImages = [
+            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,0 L70,50 L50,30 L30,50 Z" fill="%23ff9"/><path d="M50,30 L80,80 L50,60 L20,80 Z" fill="%23f93"/></svg>',
+            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50,0 L65,25 L80,0 L65,50 L80,100 L65,75 L50,100 L35,75 L20,100 L35,50 L20,0 L35,25 Z" fill="%23ff9"/></svg>'
+        ];
+
+        // Shell casing image
+        const shellCasingImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="15" fill="%23daa520" rx="2"/><rect x="5" y="5" width="10" height="3" fill="%23b8860b"/></svg>';
+
+        // Initialize game
+        function initGame() {
+            // Set weapon image
+            weapon.style.backgroundImage = `url('${weaponImages[0]}')`;
+            
+            // Set muzzle flash image
+            muzzleFlash.style.backgroundImage = `url('${muzzleFlashImages[0]}')`;
+            
+            // Update displays
+            updateDisplays();
+            
+            // Event listeners
+            gameContainer.addEventListener('click', handleShoot);
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // Start game loop
+            gameLoop();
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!gameState.isRunning) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
+            const currentTime = Date.now();
+            gameState.gameTime = currentTime;
+            
+            // Spawn zombies
+            if (currentTime - gameState.lastSpawnTime > gameState.zombieSpawnRate) {
+                spawnZombie();
+                gameState.lastSpawnTime = currentTime;
+            }
+            
+            // Move zombies
+            moveZombies();
+            
+            // Check for zombie attacks
+            checkZombieAttacks();
+            
+            // Recover from recoil
+            if (gameState.weaponRecoil > 0) {
+                gameState.weaponRecoil -= gameState.recoilRecovery;
+                updateWeaponPosition();
+            }
+            
+            // Update blood drips
+            updateBloodDrips();
+            
+            // Check for wave completion
+            checkWaveCompletion();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Spawn a zombie
+        function spawnZombie() {
+            const zombie = document.createElement('div');
+            zombie.className = 'zombie';
+            
+            // Random zombie type
+            const zombieType = Math.floor(Math.random() * zombieImages.length);
+            zombie.style.backgroundImage = `url('${zombieImages[zombieType]}')`;
+            
+            // Random size variation
+            const size = 80 + Math.random() * 40;
+            zombie.style.width = `${size}px`;
+            zombie.style.height = `${size * 1.5}px`;
+            
+            // Position at random edge
+            const edge = Math.floor(Math.random() * 4);
+            let x, y;
+            
+            switch (edge) {
+                case 0: // top
+                    x = Math.random() * gameContainer.offsetWidth;
+                    y = -size;
+                    break;
+                case 1: // right
+                    x = gameContainer.offsetWidth;
+                    y = Math.random() * gameContainer.offsetHeight;
+                    break;
+                case 2: // bottom
+                    x = Math.random() * gameContainer.offsetWidth;
+                    y = gameContainer.offsetHeight;
+                    break;
+                case 3: // left
+                    x = -size;
+                    y = Math.random() * gameContainer.offsetHeight;
+                    break;
+            }
+            
+            zombie.style.left = `${x}px`;
+            zombie.style.top = `${y}px`;
+            
+            // Add to game
+            gameContainer.appendChild(zombie);
+            
+            // Store zombie data
+            gameState.zombies.push({
+                element: zombie,
+                x: x,
+                y: y,
+                size: size,
+                health: gameState.zombieHealth,
+                speed: gameState.zombieSpeed,
+                type: zombieType
+            });
+        }
+
+        // Move zombies toward player
+        function moveZombies() {
+            const centerX = gameContainer.offsetWidth / 2;
+            const centerY = gameContainer.offsetHeight / 2;
+            
+            gameState.zombies.forEach(zombie => {
+                // Calculate direction to center
+                const dx = centerX - zombie.x;
+                const dy = centerY - zombie.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Normalize and apply speed
+                if (distance > 0) {
+                    zombie.x += (dx / distance) * zombie.speed;
+                    zombie.y += (dy / distance) * zombie.speed;
+                }
+                
+                // Update position
+                zombie.element.style.left = `${zombie.x}px`;
+                zombie.element.style.top = `${zombie.y}px`;
+                
+                // Rotate zombie to face direction
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                zombie.element.style.transform = `rotate(${angle + 90}deg)`;
+            });
+        }
+
+        // Check for zombie attacks
+        function checkZombieAttacks() {
+            const centerX = gameContainer.offsetWidth / 2;
+            const centerY = gameContainer.offsetHeight / 2;
+            const attackRadius = 50;
+            const currentTime = Date.now();
+            
+            gameState.zombies.forEach(zombie => {
+                const dx = centerX - zombie.x;
+                const dy = centerY - zombie.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < attackRadius && currentTime - gameState.lastDamageTime > gameState.damageCooldown) {
+                    takeDamage(10);
+                    gameState.lastDamageTime = currentTime;
+                    
+                    // Show blood overlay
+                    bloodOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+                    setTimeout(() => {
+                        bloodOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0)';
+                    }, 300);
+                    
+                    // Add blood drips
+                    addBloodDrips();
+                }
+            });
+        }
+
+        // Handle shooting
+        function handleShoot(e) {
+            if (!gameState.isRunning || gameState.isReloading) return;
+            
+            if (gameState.ammo > 0) {
+                // Fire bullet
+                gameState.ammo--;
+                updateDisplays();
+                
+                // Show muzzle flash
+                showMuzzleFlash();
+                
+                // Eject shell casing
+                ejectShellCasing();
+                
+                // Apply recoil
+                gameState.weaponRecoil = 10;
+                updateWeaponPosition();
+                
+                // Check for hits
+                checkHit(e.clientX, e.clientY);
+                
+                // Play shoot sound (would be added with audio API in a real game)
+            } else {
+                // Click sound for empty weapon
+                startReload();
+            }
+        }
+
+        // Show muzzle flash
+        function showMuzzleFlash() {
+            // Random flash type
+            const flashType = Math.floor(Math.random() * muzzleFlashImages.length);
+            muzzleFlash.style.backgroundImage = `url('${muzzleFlashImages[flashType]}')`;
+            
+            // Position flash
+            const weaponRect = weapon.getBoundingClientRect();
+            muzzleFlash.style.left = `${weaponRect.right - 50}px`;
+            muzzleFlash.style.top = `${weaponRect.top + 20}px`;
+            
+            // Show and hide
+            muzzleFlash.style.opacity = '1';
+            setTimeout(() => {
+                muzzleFlash.style.opacity = '0';
+            }, 50);
+        }
+
+        // Eject shell casing
+        function ejectShellCasing() {
+            const casing = document.createElement('div');
+            casing.className = 'shell-casing';
+            casing.style.backgroundImage = `url('${shellCasingImage}')`;
+            
+            // Position at weapon ejection port
+            const weaponRect = weapon.getBoundingClientRect();
+            casing.style.left = `${weaponRect.left + 50}px`;
+            casing.style.top = `${weaponRect.top + 50}px`;
+            
+            // Add to game
+            gameContainer.appendChild(casing);
+            
+            // Apply physics (simplified)
+            let x = weaponRect.left + 50;
+            let y = weaponRect.top + 50;
+            let vx = -2 - Math.random() * 3;
+            let vy = -5 - Math.random() * 3;
+            let rotation = 0;
+            let rotationSpeed = 2 + Math.random() * 5;
+            
+            const animateCasing = () => {
+                x += vx;
+                y += vy;
+                vy += 0.2; // gravity
+                rotation += rotationSpeed;
+                
+                casing.style.left = `${x}px`;
+                casing.style.top = `${y}px`;
+                casing.style.transform = `rotate(${rotation}deg)`;
+                
+                if (y < gameContainer.offsetHeight) {
+                    requestAnimationFrame(animateCasing);
+                } else {
+                    casing.remove();
+                }
+            };
+            
+            animateCasing();
+        }
+
+        // Check for hits
+        function checkHit(clickX, clickY) {
+            let hit = false;
+            let headshot = false;
+            
+            // Check each zombie for hit
+            for (let i = gameState.zombies.length - 1; i >= 0; i--) {
+                const zombie = gameState.zombies[i];
+                const zombieRect = zombie.element.getBoundingClientRect();
+                
+                // Check if click is within zombie bounds
+                if (clickX >= zombieRect.left && clickX <= zombieRect.right &&
+                    clickY >= zombieRect.top && clickY <= zombieRect.bottom) {
+                    
+                    // Check for headshot (upper third)
+                    if (clickY < zombieRect.top + zombieRect.height / 3) {
+                        headshot = true;
+                        zombie.health -= 50 * gameState.headshotMultiplier;
+                        showHeadshot(clickX, clickY);
+                    } else {
+                        zombie.health -= 50;
+                    }
+                    
+                    // Show hitmarker
+                    showHitmarker(clickX, clickY);
+                    
+                    // Show blood splat
+                    showBloodSplat(zombie, clickX, clickY, headshot);
+                    
+                    // Check if zombie died
+                    if (zombie.health <= 0) {
+                        // Add score
+                        const points = headshot ? 100 * gameState.headshotMultiplier : 100;
+                        gameState.score += points;
+                        updateDisplays();
+                        
+                        // Remove zombie
+                        zombie.element.remove();
+                        gameState.zombies.splice(i, 1);
+                    }
+                    
+                    hit = true;
+                    break;
+                }
+            }
+            
+            // If no zombie was hit, show miss effect
+            if (!hit) {
+                showHitmarker(clickX, clickY, false);
+            }
+        }
+
+        // Show hitmarker
+        function showHitmarker(x, y, hit = true) {
+            const hitmarker = document.createElement('div');
+            hitmarker.className = 'hitmarker';
+            
+            // Position at click
+            hitmarker.style.left = `${x - 10}px`;
+            hitmarker.style.top = `${y - 10}px`;
+            
+            // Color based on hit/miss
+            hitmarker.style.filter = hit ? 'none' : 'brightness(0.5)';
+            
+            // Add to game
+            gameContainer.appendChild(hitmarker);
+            
+            // Show and fade
+            setTimeout(() => {
+                hitmarker.style.opacity = '1';
+                
+                setTimeout(() => {
+                    hitmarker.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        hitmarker.remove();
+                    }, 200);
+                }, 100);
+            }, 10);
+        }
+
+        // Show headshot indicator
+        function showHeadshot(x, y) {
+            const headshot = document.createElement('div');
+            headshot.className = 'headshot';
+            
+            // Position above hit
+            headshot.style.left = `${x - 50}px`;
+            headshot.style.top = `${y - 60}px`;
+            
+            // Add to game
+            gameContainer.appendChild(headshot);
+            
+            // Show and fade
+            setTimeout(() => {
+                headshot.style.opacity = '1';
+                
+                setTimeout(() => {
+                    headshot.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        headshot.remove();
+                    }, 500);
+                }, 300);
+            }, 10);
+        }
+
+        // Show blood splat
+        function showBloodSplat(zombie, x, y, headshot) {
+            const splat = document.createElement('div');
+            splat.className = 'blood-splat';
+            
+            // Random splat type
+            const splatType = Math.floor(Math.random() * bloodSplatImages.length);
+            splat.style.backgroundImage = `url('${bloodSplatImages[splatType]}')`;
+            
+            // Size based on headshot
+            const size = headshot ? 60 + Math.random() * 40 : 40 + Math.random() * 30;
+            splat.style.width = `${size}px`;
+            splat.style.height = `${size}px`;
+            
+            // Position on zombie
+            const zombieRect = zombie.element.getBoundingClientRect();
+            const offsetX = x - zombieRect.left;
+            const offsetY = y - zombieRect.top;
+            
+            splat.style.left = `${zombie.x + offsetX - size/2}px`;
+            splat.style.top = `${zombie.y + offsetY - size/2}px`;
+            
+            // Add to game
+            gameContainer.appendChild(splat);
+        }
+
+        // Update weapon position (for recoil)
+        function updateWeaponPosition() {
+            weapon.style.transform = `translateX(-50%) translateY(${gameState.weaponRecoil}px)`;
+        }
+
+        // Handle key presses
+        function handleKeyPress(e) {
+            if (!gameState.isRunning) return;
+            
+            if (e.key.toLowerCase() === 'r' && !gameState.isReloading && gameState.ammo < gameState.maxAmmo && gameState.totalAmmo > 0) {
+                startReload();
+            }
+        }
+
+        // Start reloading
+        function startReload() {
+            if (gameState.isReloading || gameState.ammo === gameState.maxAmmo || gameState.totalAmmo === 0) return;
+            
+            gameState.isReloading = true;
+            reloadIndicator.style.opacity = '1';
+            
+            // Reload time (would be weapon specific in a real game)
+            setTimeout(() => {
+                finishReload();
+            }, 1500);
+        }
+
+        // Finish reloading
+        function finishReload() {
+            const ammoNeeded = gameState.maxAmmo - gameState.ammo;
+            const ammoToAdd = Math.min(ammoNeeded, gameState.totalAmmo);
+            
+            gameState.ammo += ammoToAdd;
+            gameState.totalAmmo -= ammoToAdd;
+            
+            gameState.isReloading = false;
+            reloadIndicator.style.opacity = '0';
+            
+            updateDisplays();
+        }
+
+        // Take damage
+        function takeDamage(amount) {
+            gameState.health -= amount;
+            updateDisplays();
+            
+            // Show blood screen effect
+            bloodScreen.style.opacity = '0.5';
+            setTimeout(() => {
+                bloodScreen.style.opacity = '0';
+            }, 500);
+            
+            // Check for game over
+            if (gameState.health <= 0) {
+                gameOver();
+            }
+        }
+
+        // Add blood drips to screen
+        function addBloodDrips() {
+            // Clear old drips
+            gameState.bloodDrips.forEach(drip => {
+                if (drip.element && drip.element.parentNode) {
+                    drip.element.remove();
+                }
+            });
+            gameState.bloodDrips = [];
+            
+            // Add new drips
+            const dripCount = 3 + Math.floor(Math.random() * 5);
+            for (let i = 0; i < dripCount; i++) {
+                const drip = document.createElement('div');
+                drip.className = 'blood-drip';
+                
+                // Random position at top of screen
+                const x = Math.random() * gameContainer.offsetWidth;
+                drip.style.left = `${x}px`;
+                drip.style.top = '0';
+                
+                // Random width and height
+                const width = 3 + Math.random() * 4;
+                const height = 30 + Math.random() * 40;
+                drip.style.width = `${width}px`;
+                drip.style.height = `${height}px`;
+                
+                // Add to game
+                gameContainer.appendChild(drip);
+                
+                // Store drip data
+                gameState.bloodDrips.push({
+                    element: drip,
+                    x: x,
+                    y: 0,
+                    speed: 1 + Math.random() * 2,
+                    maxY: height + Math.random() * 100
+                });
+            }
+        }
+
+        // Update blood drips
+        function updateBloodDrips() {
+            gameState.bloodDrips.forEach(drip => {
+                if (drip.y < drip.maxY) {
+                    drip.y += drip.speed;
+                    drip.element.style.top = `${drip.y}px`;
+                }
+            });
+        }
+
+        // Check for wave completion
+        function checkWaveCompletion() {
+            // Simple wave system: every 10 kills increases wave
+            const waveKillsNeeded = gameState.wave * 10;
+            
+            if (gameState.score >= waveKillsNeeded * 100) {
+                nextWave();
+            }
+        }
+
+        // Advance to next wave
+        function nextWave() {
+            gameState.wave++;
+            
+            // Increase difficulty
+            gameState.zombieSpeed += 0.5;
+            gameState.zombieSpawnRate = Math.max(500, gameState.zombieSpawnRate - 100);
+            gameState.zombieHealth += 20;
+            
+            // Give ammo reward
+            gameState.totalAmmo += 30;
+            
+            // Update displays
+            updateDisplays();
+            
+            // Show wave message
+            waveDisplay.textContent = `Wave: ${gameState.wave} - INCOMING!`;
+            waveDisplay.classList.add('text-red-500');
+            
+            setTimeout(() => {
+                waveDisplay.textContent = `Wave: ${gameState.wave}`;
+                waveDisplay.classList.remove('text-red-500');
+            }, 2000);
+        }
+
+        // Update all displays
+        function updateDisplays() {
+            ammoDisplay.textContent = `${gameState.ammo} / ${gameState.totalAmmo}`;
+            healthDisplay.textContent = `${Math.max(0, gameState.health)} HP`;
+            scoreDisplay.textContent = `Score: ${gameState.score}`;
+            waveDisplay.textContent = `Wave: ${gameState.wave}`;
+            
+            // Color ammo display based on ammo level
+            if (gameState.ammo === 0) {
+                ammoDisplay.classList.add('text-red-500');
+            } else {
+                ammoDisplay.classList.remove('text-red-500');
+            }
+            
+            // Color health display based on health level
+            if (gameState.health < 30) {
+                healthDisplay.classList.add('text-red-500');
+            } else if (gameState.health < 60) {
+                healthDisplay.classList.add('text-yellow-500');
+            } else {
+                healthDisplay.classList.remove('text-red-500', 'text-yellow-500');
+            }
+        }
+
+        // Game over
+        function gameOver() {
+            gameState.isRunning = false;
+            
+            // Show game over screen
+            finalScoreDisplay.textContent = gameState.score;
+            gameOverScreen.style.opacity = '1';
+            gameOverScreen.style.pointerEvents = 'auto';
+        }
+
+        // Start game
+        function startGame() {
+            // Reset game state
+            gameState.isRunning = true;
+            gameState.score = 0;
+            gameState.wave = 1;
+            gameState.health = 100;
+            gameState.ammo = 30;
+            gameState.totalAmmo = 90;
+            gameState.isReloading = false;
+            gameState.zombies = [];
+            gameState.zombieSpeed = 2;
+            gameState.zombieSpawnRate = 1500;
+            gameState.zombieHealth = 100;
+            gameState.lastSpawnTime = 0;
+            gameState.lastDamageTime = 0;
+            gameState.weaponRecoil = 0;
+            
+            // Clear all zombies
+            document.querySelectorAll('.zombie').forEach(z => z.remove());
+            document.querySelectorAll('.blood-splat').forEach(b => b.remove());
+            document.querySelectorAll('.shell-casing').forEach(s => s.remove());
+            
+            // Hide game over screen
+            gameOverScreen.style.opacity = '0';
+            gameOverScreen.style.pointerEvents = 'none';
+            
+            // Hide start screen
+            startScreen.style.display = 'none';
+            
+            // Update displays
+            updateDisplays();
+        }
+
+        // Event listeners for buttons
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+
+        // Initialize game
+        initGame();
+    </script>
+</body>
+</html>
